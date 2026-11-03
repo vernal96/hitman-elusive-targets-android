@@ -4,6 +4,10 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseKeystorePath = providers.environmentVariable("ANDROID_SIGNING_KEYSTORE").orNull
+val releasePassword = providers.environmentVariable("ANDROID_SIGNING_PASSWORD").orNull
+val hasReleaseSigning = !releaseKeystorePath.isNullOrBlank() && !releasePassword.isNullOrBlank()
+
 android {
     namespace = "com.example.hitmapstargets"
     compileSdk = 36
@@ -16,8 +20,21 @@ android {
         versionName = "1.0.0"
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseKeystorePath!!)
+                storeType = "PKCS12"
+                storePassword = releasePassword
+                keyAlias = "hitmaps"
+                keyPassword = releasePassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
