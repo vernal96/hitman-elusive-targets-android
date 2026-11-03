@@ -17,12 +17,52 @@ Native full-screen elusive-target carousel for [Hitmaps](https://hitmaps.com/). 
 
 Requirements: Android Studio, JDK 17+, Android SDK 36 and Gradle 8.13.
 
-1. Open this directory in Android Studio (as a Gradle project).
-2. Use an installed Gradle 8.13 (Settings → Build Tools → Gradle), or generate the standard Gradle wrapper with `gradle wrapper --gradle-version 8.13` on a machine where Gradle is installed.
-3. Run `gradle :app:assembleDebug` (or select Build → Build APK(s)).
-4. APK path: `app/build/outputs/apk/debug/app-debug.apk`.
+For local development, run `gradle :app:assembleDebug`, producing
+`app/build/outputs/apk/debug/app-debug.apk`.
 
-**GitHub Actions**: commit this folder to a GitHub repository on branch `main` and open Actions → Build Android APK → Run workflow. Download the `hitmaps-targets-debug-apk` artifact from the finished run. This builds on GitHub's Android SDK runner without requiring any local setup.
+### Signed release APK (GitHub Actions)
+
+GitHub Actions runs `gradle :app:assembleRelease`, verifies the APK signature,
+and uploads `hitmaps-targets-release-apk` containing the installable
+`app-release.apk`. The build requires **two repository Actions secrets**,
+configured once, to ensure future builds use the same signing identity.
+
+1. Generate a private signing key on your computer using JDK 17 or later:
+   ```bash
+   keytool -genkeypair -v -storetype PKCS12 -keystore hitmaps-release.p12 -alias hitmaps -keyalg RSA -keysize 3072 -validity 10000
+   ```
+   Choose a strong keystore password and save it securely. PKCS12 uses the
+   keystore password for the key password. The alias **must** be `hitmaps`.
+2. Open your GitHub repository: **Settings → Secrets and variables → Actions →
+   New repository secret**. Create both secrets:
+   - `ANDROID_KEYSTORE_BASE64`: base64 encoding of the `hitmaps-release.p12` file.
+     On Windows PowerShell, copy it directly to clipboard with:
+     ```powershell
+     [Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path .\hitmaps-release.p12))) | Set-Clipboard
+     ```
+     On Linux: `base64 -w 0 hitmaps-release.p12`.
+     On macOS: `base64 < hitmaps-release.p12 | tr -d '\n'`.
+   - `ANDROID_SIGNING_PASSWORD`: the password from step 1.
+3. Open **Actions → Build Android Release APK → Run workflow**.
+   After success, download **hitmaps-targets-release-apk** from **Artifacts**.
+   Inside the ZIP is the signed `app-release.apk`.
+
+Keep `hitmaps-release.p12` and its password backed up privately. Never commit
+the keystore to Git or share it. GitHub Actions fails clearly if secrets are
+missing; it never uploads an unsigned APK disguised as a release.
+
+For a local signed release, set environment variables
+`ANDROID_SIGNING_KEYSTORE` (absolute path to the PKCS12 file) and
+`ANDROID_SIGNING_PASSWORD`, then run `gradle :app:assembleRelease`.
+Without those variables, Gradle may produce an *unsigned* local release APK
+that cannot be installed.
+
+**Upgrading from the previous debug APK:** Android cannot install a release
+signed with a different key over a debug-signed app. Uninstall the debug APK
+first (its app data will be removed), then install the release APK. Subsequent
+release builds signed with the same keystore can update the installed app
+without uninstalling, provided the `versionCode` is not lower than the
+installed version.
 
 ## Notifications
 
