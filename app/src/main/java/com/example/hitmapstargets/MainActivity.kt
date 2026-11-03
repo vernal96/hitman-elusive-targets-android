@@ -459,7 +459,6 @@ private fun PagerFooter(
                     }
                 }
             }
-            Text("SWIPE  ↔", color = Pale.copy(alpha = .55f), fontSize = 10.sp, letterSpacing = 1.sp)
         }
     }
 }
